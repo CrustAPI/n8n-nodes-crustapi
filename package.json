@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-crustapi",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "n8n community node for CrustAPI — Google Search, Maps, News, Shopping, Reviews and more as clean JSON.",
   "keywords": [
     "n8n-community-node-package",
