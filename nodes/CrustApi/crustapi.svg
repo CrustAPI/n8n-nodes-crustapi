@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+  <defs>
+    <clipPath id="gc"><circle cx="50" cy="50" r="36"></circle></clipPath>
+    <filter id="ink2" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency="0.024" numOctaves="2" seed="13" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="3.8" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter>
+  </defs>
+  <g filter="url(#ink2)">
+    <circle cx="50" cy="50" r="37" fill="#E7F3EE" stroke="#1E2B29" stroke-width="6.5" stroke-linejoin="round"></circle>
+    <g clip-path="url(#gc)">
+      <g fill="#0E9E86">
+        <ellipse cx="37" cy="35" rx="15" ry="9" transform="rotate(-20 37 35)"></ellipse>
+        <ellipse cx="60" cy="60" rx="17" ry="11" transform="rotate(14 60 60)"></ellipse>
+      </g>
+      <circle cx="67" cy="37" r="7" fill="#F1A73A"></circle>
+    </g>
+  </g>
+</svg>
