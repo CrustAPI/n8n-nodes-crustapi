@@ -2,7 +2,7 @@
 
 This is an n8n community node. It lets you use [CrustAPI](https://crustapi.com) in your n8n workflows.
 
-CrustAPI returns Google data as clean JSON from one endpoint: web search, Maps, Reviews, News, Shopping, Images, Videos, Places, and webpage scraping. You only pay for successful results, and empty searches are free.
+CrustAPI returns Google and public LinkedIn data as clean JSON. Google covers web search, Maps, Reviews, News, Shopping, Images, Videos, Places, and webpage scraping. LinkedIn covers public profiles, company pages, posts, jobs, and people search. You only pay for successful results, and empty searches are free.
 
 [Installation](#installation) · [Operations](#operations) · [Credentials](#credentials) · [Usage](#usage)
 
@@ -21,8 +21,21 @@ One node, pick the surface with the **Operation** dropdown:
 - **Shopping** — product listings with price, seller, and condition
 - **Images**, **Videos**, **Places**
 - **Scrape Webpage** — turn any URL into clean text and metadata
+- **LinkedIn Profile / Company / Posts / Jobs / People Search**: public LinkedIn data, see below
 
 Each result comes back as its own item, so you can map fields straight into the next node.
+
+## LinkedIn
+
+Five operations for public LinkedIn data, no cookies or login needed:
+
+- **LinkedIn Profile**: paste a `linkedin.com/in/...` URL, get the person's name, headline, work history, education, and skills
+- **LinkedIn Company**: a company page URL, with an optional employee list
+- **LinkedIn Posts**: recent posts from a profile or company URL, with optional comments
+- **LinkedIn Jobs**: job listings for keywords, with an optional location
+- **LinkedIn People Search**: find people by keywords; turn on **Enrich** to get each person's full profile in the same call (1 credit per profile)
+
+Example: to build a lead list, use **LinkedIn People Search** with keywords like "marketing director fintech" and Enrich on, then map `name`, `headline`, and `url` into a Google Sheet. A private or empty profile returns a note instead of data and is not charged.
 
 ## Credentials
 

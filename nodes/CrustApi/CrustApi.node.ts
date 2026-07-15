@@ -8,6 +8,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+// LinkedIn operations hit GET /v1/linkedin with a type param instead of /v1/search.
+const LINKEDIN_TYPES: Record<string, string> = {
+	linkedinProfile: 'profile',
+	linkedinCompany: 'company',
+	linkedinPosts: 'posts',
+	linkedinJobs: 'jobs',
+	linkedinSearch: 'search',
+};
+
 export class CrustApi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CrustAPI',
@@ -16,7 +25,7 @@ export class CrustApi implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
-		description: 'Get Google Search, Maps, News, Shopping, and Reviews data as clean JSON',
+		description: 'Get Google Search, Maps, News, Shopping, Reviews plus public LinkedIn data as clean JSON',
 		defaults: { name: 'CrustAPI' },
 		inputs: ['main'],
 		outputs: ['main'],
@@ -33,6 +42,11 @@ export class CrustApi implements INodeType {
 				noDataExpression: true,
 				options: [
 					{ name: 'Images', value: 'images', description: 'Google image results', action: 'Search google images' },
+					{ name: 'LinkedIn Company', value: 'linkedinCompany', description: 'Public LinkedIn company page from a company URL', action: 'Get a linkedin company' },
+					{ name: 'LinkedIn Jobs', value: 'linkedinJobs', description: 'LinkedIn job listings for keywords', action: 'Search linkedin jobs' },
+					{ name: 'LinkedIn People Search', value: 'linkedinSearch', description: 'Find people on LinkedIn by keywords', action: 'Search linkedin people' },
+					{ name: 'LinkedIn Posts', value: 'linkedinPosts', description: 'Public posts from a LinkedIn profile or company URL', action: 'Get linkedin posts' },
+					{ name: 'LinkedIn Profile', value: 'linkedinProfile', description: 'Public LinkedIn profile from a profile URL', action: 'Get a linkedin profile' },
 					{ name: 'Maps', value: 'maps', description: 'Local businesses with ratings, phone, website', action: 'Search google maps' },
 					{ name: 'News', value: 'news', description: 'Google News results', action: 'Search google news' },
 					{ name: 'Places', value: 'places', description: 'Lean local pack results', action: 'Search google places' },
@@ -53,7 +67,11 @@ export class CrustApi implements INodeType {
 				required: true,
 				placeholder: 'e.g. dentists in Miami',
 				description: 'What to search for',
-				displayOptions: { hide: { operation: ['webpage'] } },
+				displayOptions: {
+					hide: {
+						operation: ['webpage', 'linkedinProfile', 'linkedinCompany', 'linkedinPosts', 'linkedinJobs', 'linkedinSearch'],
+					},
+				},
 			},
 			// url for the scrape operation
 			{
@@ -66,13 +84,39 @@ export class CrustApi implements INodeType {
 				description: 'The page to scrape',
 				displayOptions: { show: { operation: ['webpage'] } },
 			},
+			// url for the LinkedIn profile/company/posts operations
+			{
+				displayName: 'LinkedIn URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'https://www.linkedin.com/in/satyanadella',
+				description: 'A linkedin.com/in/... profile URL or linkedin.com/company/... page URL',
+				displayOptions: { show: { operation: ['linkedinProfile', 'linkedinCompany', 'linkedinPosts'] } },
+			},
+			// keywords for the LinkedIn jobs/people search operations
+			{
+				displayName: 'Keywords',
+				name: 'keywords',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'e.g. sales manager',
+				description: 'What to search for on LinkedIn',
+				displayOptions: { show: { operation: ['linkedinJobs', 'linkedinSearch'] } },
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
-				displayOptions: { hide: { operation: ['webpage'] } },
+				displayOptions: {
+					hide: {
+						operation: ['webpage', 'linkedinProfile', 'linkedinCompany', 'linkedinPosts', 'linkedinJobs', 'linkedinSearch'],
+					},
+				},
 				options: [
 					{ displayName: 'Country (Gl)', name: 'gl', type: 'string', default: 'us', description: 'Two-letter country code' },
 					{ displayName: 'Language (Hl)', name: 'hl', type: 'string', default: 'en', description: 'Two-letter language code' },
@@ -101,6 +145,64 @@ export class CrustApi implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Options',
+				name: 'linkedinOptions',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['linkedinProfile', 'linkedinCompany', 'linkedinPosts', 'linkedinJobs', 'linkedinSearch'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Enrich (People Search)',
+						name: 'enrich',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to return each person\'s full profile in the same call. Costs 1 credit per profile returned.',
+					},
+					{
+						displayName: 'Include Comments (Posts)',
+						name: 'comments',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to include comments on each post',
+					},
+					{
+						displayName: 'Include Employees (Company)',
+						name: 'employees',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to include the employee list on the company',
+					},
+					{
+						displayName: 'Limit',
+						name: 'limit',
+						type: 'number',
+						typeOptions: { minValue: 1 },
+						default: 25,
+						description: 'Max number of results. Posts up to 100, jobs up to 50, people search up to 15.',
+					},
+					{
+						displayName: 'Location (Jobs)',
+						name: 'location',
+						type: 'string',
+						default: '',
+						description: 'City or region for the Jobs operation, e.g. "Austin, TX"',
+					},
+					{
+						displayName: 'Start (Jobs)',
+						name: 'start',
+						type: 'number',
+						typeOptions: { minValue: 0 },
+						default: 0,
+						description: 'Result offset for paging job listings',
+					},
+				],
+			},
 		],
 	};
 
@@ -111,9 +213,20 @@ export class CrustApi implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const operation = this.getNodeParameter('operation', i) as string;
-				const qs: Record<string, string | number> = { type: operation };
+				const linkedinType = LINKEDIN_TYPES[operation];
+				const qs: Record<string, string | number | boolean> = { type: linkedinType ?? operation };
 
-				if (operation === 'webpage') {
+				if (linkedinType) {
+					if (linkedinType === 'jobs' || linkedinType === 'search') {
+						qs.keywords = this.getNodeParameter('keywords', i) as string;
+					} else {
+						qs.url = this.getNodeParameter('url', i) as string;
+					}
+					const options = this.getNodeParameter('linkedinOptions', i, {}) as Record<string, unknown>;
+					for (const [k, v] of Object.entries(options)) {
+						if (v !== '' && v !== undefined && v !== null) qs[k] = v as string | number | boolean;
+					}
+				} else if (operation === 'webpage') {
 					qs.url = this.getNodeParameter('url', i) as string;
 				} else {
 					qs.q = this.getNodeParameter('q', i) as string;
@@ -126,17 +239,25 @@ export class CrustApi implements INodeType {
 				const response = await this.helpers.httpRequestWithAuthentication.call(this, 'crustApiApi', {
 					method: 'GET',
 					baseURL: 'https://crustapi.com/v1',
-					url: '/search',
+					url: linkedinType ? '/linkedin' : '/search',
 					qs,
 					json: true,
 				});
 
 				// The array of results lives under a per-type key (organic, places, news, reviews...).
 				// Emit one item per result so downstream nodes map fields cleanly; fall back to the whole body.
-				const arrayKey = Object.keys(response).find(
-					(k) => Array.isArray((response as Record<string, unknown>)[k]),
-				);
-				const rows = arrayKey ? ((response as Record<string, unknown>)[arrayKey] as unknown[]) : [response];
+				let rows: unknown[];
+				if (linkedinType) {
+					// LinkedIn data lives under a fixed key: profile/company = object, posts/jobs = array, search = "people".
+					const dataKey = linkedinType === 'search' ? 'people' : linkedinType;
+					const data = (response as Record<string, unknown>)[dataKey];
+					rows = Array.isArray(data) ? data : data ? [data] : [response];
+				} else {
+					const arrayKey = Object.keys(response).find(
+						(k) => Array.isArray((response as Record<string, unknown>)[k]),
+					);
+					rows = arrayKey ? ((response as Record<string, unknown>)[arrayKey] as unknown[]) : [response];
+				}
 				for (const row of rows) {
 					out.push({ json: row as IDataObject, pairedItem: { item: i } });
 				}

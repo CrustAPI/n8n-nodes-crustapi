@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-crustapi",
-  "version": "0.1.2",
-  "description": "n8n community node for CrustAPI — Google Search, Maps, News, Shopping, Reviews and more as clean JSON.",
+  "version": "0.2.0",
+  "description": "n8n community node for CrustAPI. Google Search, Maps, News, Shopping, Reviews plus public LinkedIn profiles, companies, posts, jobs and people search as clean JSON.",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -10,7 +10,9 @@
     "serp",
     "scraper",
     "maps",
-    "reviews"
+    "reviews",
+    "linkedin",
+    "linkedin-scraper"
   ],
   "license": "MIT",
   "homepage": "https://crustapi.com",
