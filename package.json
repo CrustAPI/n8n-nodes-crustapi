@@ -22,7 +22,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/crustapi/n8n-nodes-crustapi.git"
+    "url": "https://github.com/CrustAPI/n8n-nodes-crustapi.git"
   },
   "engines": {
     "node": ">=20.15"
